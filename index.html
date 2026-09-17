@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b1020">
+<title>SkyGlide — 崖から飛べ</title>
+<meta name="description" content="崖から飛び降りて滑空する3Dゲーム。6つの景色、リング、ジェム、ミッション、アップグレード、エンドレスモード。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪂</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="vignette"></div>
+
+<div id="ui">
+  <!-- ============ TITLE ============ -->
+  <section class="screen" id="screen-title">
+    <div class="title-wrap">
+      <div class="logo"><span class="logo-sky">SKY</span><span class="logo-glide">GLIDE</span></div>
+      <div class="tagline">崖から飛べ。風をつかめ。</div>
+      <div class="menu">
+        <button class="btn primary big" data-go="stages">ステージ選択</button>
+        <button class="btn big" id="btn-endless">エンドレス</button>
+        <button class="btn" data-go="hangar">格納庫</button>
+        <button class="btn" data-go="records">実績・記録</button>
+        <button class="btn" data-go="settings">設定</button>
+      </div>
+      <div class="title-stats" id="title-stats"></div>
+    </div>
+    <div class="footer">WASD / 矢印: 操作 ・ Shift: ブースト ・ X: ブレーキ ・ Q/E: バレルロール ・ V: カメラ</div>
+  </section>
+
+  <!-- ============ STAGE SELECT ============ -->
+  <section class="screen hidden" id="screen-stages">
+    <header class="bar"><button class="btn small" data-go="title">← 戻る</button><h2>ステージ選択</h2><div class="bar-right" id="stages-stars"></div></header>
+    <div class="cards" id="stage-cards"></div>
+  </section>
+
+  <!-- ============ HANGAR ============ -->
+  <section class="screen hidden" id="screen-hangar">
+    <header class="bar"><button class="btn small" data-go="title">← 戻る</button><h2>格納庫</h2><div class="bar-right gems" id="hangar-gems"></div></header>
+    <div class="hangar-wrap">
+      <div class="panel">
+        <h3>アップグレード</h3>
+        <div id="upgrade-list"></div>
+      </div>
+      <div class="panel">
+        <h3>ウイングスーツ</h3>
+        <div class="skins" id="skin-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RECORDS ============ -->
+  <section class="screen hidden" id="screen-records">
+    <header class="bar"><button class="btn small" data-go="title">← 戻る</button><h2>実績・記録</h2><div class="bar-right"></div></header>
+    <div class="hangar-wrap">
+      <div class="panel"><h3>実績</h3><div id="achievement-list"></div></div>
+      <div class="panel"><h3>統計</h3><div id="stats-list"></div><h3>ベスト記録</h3><div id="best-list"></div></div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="screen hidden" id="screen-settings">
+    <header class="bar"><button class="btn small" data-go="title">← 戻る</button><h2>設定</h2><div class="bar-right"></div></header>
+    <div class="panel settings">
+      <label><span>上下反転（飛行機式）</span><input type="checkbox" id="set-invert"></label>
+      <label><span>操作感度</span><input type="range" id="set-sens" min="0.5" max="1.5" step="0.1"></label>
+      <label><span>画質</span><select id="set-quality"><option value="low">低</option><option value="med">中</option><option value="high">高</option></select></label>
+      <label><span>効果音</span><input type="checkbox" id="set-sfx"></label>
+      <label><span>BGM（アンビエント）</span><input type="checkbox" id="set-music"></label>
+      <div class="howto">
+        <h3>あそびかた</h3>
+        <p>崖の上で <b>Space</b>（タップ）でジャンプ。<b>W/↑</b> で急降下して速度を稼ぎ、<b>S/↓</b> で機首を上げて滑空。<b>A/D</b> で旋回。</p>
+        <p>速度が落ちすぎると失速して落ちる。<b>Shift</b> のブーストは有限で、リングを通ると少し回復。<b>X</b> でブレーキ（減速して細かくジェムを拾える）。</p>
+        <p>リングを連続で通過するとコンボ倍率アップ。地面スレスレを飛ぶと「スレスレボーナス」。<b>Q/E</b> でバレルロールして得点。</p>
+        <p>ゲームパッド対応（左スティック・RT/A ブースト・LT/B ブレーキ・LB/RB ロール）。</p>
+      </div>
+      <button class="btn danger" id="btn-reset">セーブデータを消去</button>
+    </div>
+  </section>
+
+  <!-- ============ HUD ============ -->
+  <section class="screen hidden" id="hud">
+    <div class="hud-top-left"><div class="hud-stage" id="hud-stage"></div><div class="hud-time" id="hud-time">0:00.0</div></div>
+    <div class="hud-top-center"><div class="hud-score" id="hud-score">0</div><div class="hud-combo" id="hud-combo"></div></div>
+    <div class="hud-top-right"><div id="hud-rings">◎ 0/0</div><div id="hud-gems">◆ 0</div><div id="hud-dist"></div></div>
+    <div class="hud-bottom-left">
+      <div class="hud-speed"><span id="hud-speed">0</span><small>km/h</small></div>
+      <div class="hud-alt">高度 <span id="hud-alt">0</span>m ・ 地表 <span id="hud-ground">0</span>m</div>
+    </div>
+    <div class="hud-bottom-center">
+      <div class="boost-bar"><div class="boost-fill" id="hud-boost"></div><span>BOOST</span></div>
+      <div class="hud-bounces" id="hud-bounces"></div>
+    </div>
+    <div class="hud-prox" id="hud-prox">スレスレ!</div>
+    <div class="target" id="hud-target"><div class="target-diamond"></div><div class="target-dist" id="hud-target-dist"></div></div>
+    <div class="target-arrow" id="hud-arrow">➤</div>
+    <div class="popups" id="hud-popups"></div>
+    <div class="ready-prompt" id="ready-prompt"><div class="ready-big">SPACE / タップ で飛び降りる</div><div class="ready-small">W/↑ 急降下 ・ S/↓ 機首上げ ・ A/D 旋回 ・ Esc ポーズ</div></div>
+    <button class="btn small hud-pause" id="btn-pause">II</button>
+  </section>
+
+  <!-- ============ TOUCH ============ -->
+  <div id="touch" class="hidden">
+    <div class="stick" id="stick"><div class="knob" id="knob"></div></div>
+    <div class="touch-btns">
+      <button class="tbtn" id="tbtn-brake">BRAKE</button>
+      <button class="tbtn boost" id="tbtn-boost">BOOST</button>
+      <button class="tbtn action" id="tbtn-action">JUMP / ROLL</button>
+    </div>
+  </div>
+
+  <!-- ============ PAUSE ============ -->
+  <section class="screen overlay hidden" id="screen-pause">
+    <div class="dialog">
+      <h2>ポーズ</h2>
+      <button class="btn primary" id="btn-resume">再開</button>
+      <button class="btn" id="btn-restart">リトライ</button>
+      <button class="btn" id="btn-quit">タイトルへ</button>
+    </div>
+  </section>
+
+  <!-- ============ RESULT ============ -->
+  <section class="screen overlay hidden" id="screen-result">
+    <div class="dialog result">
+      <h2 id="result-title">GOAL!</h2>
+      <div class="medal" id="result-medal"></div>
+      <div class="result-score"><span id="result-score">0</span><small>pts</small></div>
+      <div class="breakdown" id="result-breakdown"></div>
+      <div class="missions" id="result-missions"></div>
+      <div class="result-gems" id="result-gems"></div>
+      <div class="result-ach" id="result-ach"></div>
+      <div class="row">
+        <button class="btn primary" id="btn-retry">リトライ</button>
+        <button class="btn" id="btn-next">次のステージ</button>
+        <button class="btn" id="btn-result-title">タイトルへ</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast"></div>
+  <div id="loading" class="hidden"><div class="spinner"></div><div>地形を生成中…</div></div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
