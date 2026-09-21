@@ -41,14 +41,16 @@ python -m http.server 8765
 # → http://localhost:8765/
 ```
 
-## デプロイ（Cloudflare Pages）
+## デプロイ（Cloudflare）
+
+公開 URL: https://skyglide.illiameadps07.workers.dev
+
+Cloudflare Workers の静的アセット配信（`wrangler.jsonc` の `assets.directory: "."`）で公開しています。
+更新は次のコマンドだけです（初回は `npx wrangler login`）。
 
 ```bash
-npx wrangler pages deploy . --project-name skyglide
+npx wrangler deploy
 ```
-
-Cloudflare ダッシュボードで Pages プロジェクトをこの GitHub リポジトリに接続すると、
-`main` への push で自動デプロイされます（ビルドコマンドなし、出力ディレクトリ `/`）。
 
 ## 構成
 
